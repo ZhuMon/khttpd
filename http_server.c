@@ -1,14 +1,20 @@
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
+#include "http_server.h"
+
 #include <linux/kthread.h>
 #include <linux/sched/signal.h>
 #include <linux/tcp.h>
 
 #include "http_parser.h"
-#include "http_server.h"
 
 #define CRLF "\r\n"
 
+#define HTTP_RESPONSE_200                                      \
+    ""                                                         \
+    "HTTP/1.1 200 OK" CRLF "Server: " KBUILD_MODNAME CRLF      \
+    "Content-Type: text/plain" CRLF "Content-Length: %lu" CRLF \
+    "Connection: %s" CRLF CRLF "%s" CRLF
 #define HTTP_RESPONSE_200_DUMMY                               \
     ""                                                        \
     "HTTP/1.1 200 OK" CRLF "Server: " KBUILD_MODNAME CRLF     \
@@ -73,6 +79,39 @@ static int http_server_send(struct socket *sock, const char *buf, size_t size)
     return done;
 }
 
+static size_t my_log10(size_t N)
+{
+    unsigned int vals[] = {
+        1UL,      10UL,      100UL,      1000UL,      10000UL,
+        100000UL, 1000000UL, 10000000UL, 100000000UL, 1000000000UL,
+    };
+    size_t i;
+    for (i = 0; i < 9; ++i) {                   // 9
+        if (N >= vals[i] && N < vals[i + 1]) {  // 8
+            break;                              // 1
+        }
+    }
+    return i;
+}
+
+static char *generate_response(char *url, int keep_alive)
+{
+    // TODO: use macro in http_parser.c
+    char *connection = keep_alive ? "Keep-Alive" : "Close";
+
+    // TODO: change to fibonacci
+    char *content = url;
+
+    // use log10 to count length of number
+    size_t response_buf_size = strlen(HTTP_RESPONSE_200) +
+                               my_log10(strlen(content)) + 1 +
+                               strlen(connection) + strlen(content);
+    char *response = kmalloc(response_buf_size, GFP_KERNEL);
+
+    snprintf(response, response_buf_size, HTTP_RESPONSE_200, strlen(content),
+             connection, content);
+    return response;
+}
 static int http_server_response(struct http_request *request, int keep_alive)
 {
     char *response;
@@ -81,8 +120,9 @@ static int http_server_response(struct http_request *request, int keep_alive)
     if (request->method != HTTP_GET)
         response = keep_alive ? HTTP_RESPONSE_501_KEEPALIVE : HTTP_RESPONSE_501;
     else
-        response = keep_alive ? HTTP_RESPONSE_200_KEEPALIVE_DUMMY
-                              : HTTP_RESPONSE_200_DUMMY;
+        response = generate_response(request->request_url, keep_alive);
+    /*response = keep_alive ? HTTP_RESPONSE_200_KEEPALIVE_DUMMY*/
+    /*: HTTP_RESPONSE_200_DUMMY;*/
     http_server_send(request->socket, response, strlen(response));
     return 0;
 }
