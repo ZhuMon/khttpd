@@ -1,12 +1,11 @@
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
-#include "http_server.h"
-
 #include <linux/kthread.h>
 #include <linux/sched/signal.h>
 #include <linux/tcp.h>
 
 #include "http_parser.h"
+#include "http_server.h"
 
 #define CRLF "\r\n"
 
