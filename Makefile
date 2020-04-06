@@ -3,8 +3,16 @@ KDIR=/lib/modules/$(shell uname -r)/build
 CFLAGS_user = -std=gnu11 -Wall -Wextra -Werror
 LDFLAGS_user = -lpthread
 
+ccflags-y := -std=gnu99 -Wno-declaration-after-statement -msse2
+
 obj-m += khttpd.o
 khttpd-objs := \
+    	fibonacci/fibonacci.o \
+	fibonacci/apm.o \
+	fibonacci/format.o \
+	fibonacci/bignum.o \
+	fibonacci/mul.o \
+	fibonacci/sqr.o \
 	http_parser.o \
 	http_server.o \
 	main.o

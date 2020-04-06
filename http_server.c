@@ -1,9 +1,12 @@
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
 #include <linux/kthread.h>
+#include <linux/memory.h>
 #include <linux/sched/signal.h>
+#include <linux/string.h>
 #include <linux/tcp.h>
 
+#include "fibonacci/bn.h"
 #include "http_parser.h"
 #include "http_server.h"
 
@@ -36,11 +39,12 @@
     "Connection: KeepAlive" CRLF CRLF "501 Not Implemented" CRLF
 
 #define RECV_BUFFER_SIZE 4096
+#define MAX_URL_SIZE 128
 
 struct http_request {
     struct socket *socket;
     enum http_method method;
-    char request_url[128];
+    char request_url[MAX_URL_SIZE];
     int complete;
 };
 
@@ -98,8 +102,20 @@ static char *generate_response(char *url, int keep_alive)
     // TODO: use macro in http_parser.c
     char *connection = keep_alive ? "Keep-Alive" : "Close";
 
-    // TODO: change to fibonacci
-    char *content = url;
+    // parse URL
+    char *content = url;  // assign to fibonacci iff url == "fib/[0-9]*"
+
+    // first character is "/", ignore it
+    char *path = strsep(&url + 1, "/");
+    if (!strcmp(path, "fib") && (path = strsep(&url, "/"))) {
+        long k = 1;
+        bn_t fib = BN_INITIALIZER;
+        if (kstrtol(path, 10, &k) == 0) {
+            fibonacci(k, fib);
+            content = bn_return(fib);
+        }
+    }
+
 
     // use log10 to count length of number
     size_t response_buf_size = strlen(HTTP_RESPONSE_200) +
@@ -118,10 +134,9 @@ static int http_server_response(struct http_request *request, int keep_alive)
     pr_info("requested_url = %s\n", request->request_url);
     if (request->method != HTTP_GET)
         response = keep_alive ? HTTP_RESPONSE_501_KEEPALIVE : HTTP_RESPONSE_501;
-    else
+    else {
         response = generate_response(request->request_url, keep_alive);
-    /*response = keep_alive ? HTTP_RESPONSE_200_KEEPALIVE_DUMMY*/
-    /*: HTTP_RESPONSE_200_DUMMY;*/
+    }
     http_server_send(request->socket, response, strlen(response));
     return 0;
 }
