@@ -1,11 +1,13 @@
-#!$SHELL
-if [ $#<2 ]; then
-    url=$1
+#! /bin/bash
+url="fib/"
+
+if [[ $#>"0" ]]; then
+    k="$1"
 else
-    url="fib"
+    k="10"
 fi
 
-echo "${url}"
+url="${url}${k}"
 
 make
 sudo rmmod khttpd
