@@ -106,13 +106,18 @@ static char *generate_response(char *url, int keep_alive)
     char *content = url;  // assign to fibonacci iff url == "fib/[0-9]*"
 
     // first character is "/", ignore it
-    char *path = strsep(&url + 1, "/");
+    ++url;
+    char *path = strsep(&url, "/");
+
     if (!strcmp(path, "fib") && (path = strsep(&url, "/"))) {
         long k = 1;
         bn_t fib = BN_INITIALIZER;
         if (kstrtol(path, 10, &k) == 0) {
             fibonacci(k, fib);
             content = bn_return(fib);
+            if (!content) {
+                pr_info("Get fibonacci error\n");
+            }
         }
     }
 
@@ -121,7 +126,7 @@ static char *generate_response(char *url, int keep_alive)
     size_t response_buf_size = strlen(HTTP_RESPONSE_200) +
                                my_log10(strlen(content)) + 1 +
                                strlen(connection) + strlen(content);
-    char *response = kmalloc(response_buf_size, GFP_KERNEL);
+    char *response = MALLOC(response_buf_size);
 
     snprintf(response, response_buf_size, HTTP_RESPONSE_200, strlen(content),
              connection, content);
