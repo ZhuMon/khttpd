@@ -9,7 +9,11 @@ fi
 
 url="${url}${k}"
 
-make
+make >> /dev/null
+if [[ $? -ne 0 ]]; then
+    return
+fi
+
 sudo rmmod khttpd
 sudo insmod khttpd.ko port=1999
 wget localhost:1999/"${url}"
