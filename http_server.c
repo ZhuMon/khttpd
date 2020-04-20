@@ -136,7 +136,7 @@ static int http_server_response(struct http_request *request, int keep_alive)
 {
     char *response;
 
-    pr_info("requested_url = %s\n", request->request_url);
+    /*pr_info("requested_url = %s\n", request->request_url);*/
     if (request->method != HTTP_GET)
         response = keep_alive ? HTTP_RESPONSE_501_KEEPALIVE : HTTP_RESPONSE_501;
     else {
@@ -235,7 +235,7 @@ static int http_server_worker(void *arg)
             break;
         }
         http_parser_execute(&parser, &setting, buf, ret);
-        if (request.complete && !http_should_keep_alive(&parser))
+        if (request.complete)  // && !http_should_keep_alive(&parser))
             break;
     }
     kernel_sock_shutdown(socket, SHUT_RDWR);
